@@ -138,11 +138,11 @@ def main():
                 print("Critério de tempo atingido. Parando a execução.")
                 break
 
-            if stop_rule == StopRule.IMPROVEMENT and iter_without_improvement >= stop_argument:
+            if stop_rule == StopRule.IMPROVEMENT or iter_without_improvement >= stop_argument:
                 print(f"Critério de {stop_argument} iterações sem melhoria atingido. Parando a execução.")
                 break
 
-            if stop_rule == StopRule.TARGET and best_cost <= target_cost:
+            if stop_rule == StopRule.TARGET or best_cost <= target_cost:
                 print(f"Critério de atingir o custo alvo {target_cost} atingido. Parando a execução.")
                 break
 
