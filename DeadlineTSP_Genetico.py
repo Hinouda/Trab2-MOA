@@ -48,19 +48,18 @@ class TSPDecoder:
             v = permutation[k + 1]
 
             if (u, v) not in self.arestas:
-                return float('inf')
+                return float(1)
 
-            time += self.matrizCustos[u][v]
-            t[v] = time
-
-            if v != 0 and t[v] > self.prazos[v]:
-                return float('inf')
+            if t[v] > self.prazos[v]:
+                  return float(2)
 
             total_cost += self.matrizCustos[u][v]
             visited.add(v)
 
+            t[v] = total_cost
+
         if len(visited) != self.numVertices or permutation[0] != 0 or permutation[-1] != 0:
-            return float('inf')
+            return float('3')
 
         return total_cost
 
@@ -72,6 +71,14 @@ def calcular_custo_rota(permutacao, matrizCustos):
         v = permutacao[i + 1]
         total_cost += matrizCustos[u][v]
     return total_cost
+
+def le_solucao_exata():
+    arqv = open("solucaoExata.txt", "r")
+    resolucao = []
+    for linha in arqv:
+        resolucao.append(linha.rstrip("\n"))
+
+    return resolucao
 
 # Critérios de parada
 class StopRule:
@@ -86,13 +93,17 @@ def main():
         print("Usage: python main_minimal.py <seed> <num_generations> ")
         sys.exit(1)
 
+    resolucaoExata = le_solucao_exata()
+    print(resolucaoExata)
+
     seed = int(sys.argv[1])
     num_generations  = int(sys.argv[2])
     stop_rule = StopRule.GENERATIONS  
 
     nomeInstancias = glob.glob('Instancias/*.txt')
 
-    for instancia in nomeInstancias:
+    # instancia = "Instancias/Instancia_6100Vertices_02.txt"
+    for instancia, i in zip(nomeInstancias, range(10)):
         numVertices, custos, arestas, prazos = leituraInstancia(instancia)
 
         print(f"\n\nResolução do Caixeiro Viajante com Prazos para a instância: {instancia}")
@@ -117,14 +128,16 @@ def main():
         target_cost = 0 
 
         start_time = time.time()
-        stop_argument = 200 if numVertices <= 20 else 500
+        exec_time = 0
         maximum_time = 12000  
-
+        stop_argument = 100 if numVertices <= 20 else 500
+        
         for iteration in range(num_generations):
             brkga.evolve(1)
             current_best_cost = brkga.get_best_fitness()
 
             if current_best_cost < best_cost:
+                exec_time = time.time() - start_time
                 best_cost = current_best_cost
                 iter_without_improvement = 0  # Reset contador se houve melhora
             else:
@@ -145,9 +158,19 @@ def main():
             if stop_rule == StopRule.TARGET or best_cost <= target_cost:
                 print(f"Critério de atingir o custo alvo {target_cost} atingido. Parando a execução.")
                 break
+            
+            if resolucaoExata[i].count('.') == 0:
+                if best_cost == int(resolucaoExata[i]):
+                    print(f"Solução encontrada é a solução ótima!")
+                    break
+                elif best_cost - int(resolucaoExata[i]) <=  int(resolucaoExata[i])  * 0.10:
+                    print(f"Solução encontrada está a 5% da solução ótima!")
+                    break
 
         print(f"Melhor custo encontrado: {best_cost}")
+        print(f"Tempo de execucao ate encontrar melhor custo: {exec_time}\n")
         arqv.write(f"Melhor custo encontrado: {best_cost}\n")
+        arqv.write(f"Tempo de execucao ate encontrar melhor custo: {exec_time}\n")
 
         # Mostrar a melhor rota encontrada
         best_chromosome = brkga.get_best_chromosome()

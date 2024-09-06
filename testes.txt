@@ -1,9 +1,0 @@
-
-
-Resolução do Caixeiro Viajante com Prazos para a instância: Instancias\0001_teste1.txt
-Melhor custo encontrado: inf
-Melhor rota: [0, 5, 4, 6, 2, 1, 3, 0]
-Inconsistência encontrada! A rota [0, 5, 4, 6, 2, 1, 3, 0] tem custo 230, mas o melhor custo encontrado foi inf.
-
-
-Resolução do Caixeiro Viajante com Prazos para a instância: Instancias\000_teste.txt
