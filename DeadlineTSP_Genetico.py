@@ -2,6 +2,8 @@ import glob
 import sys
 import numpy as np
 import time
+import random
+import greedyDL
 from brkga_mp_ipr.enums import Sense
 from brkga_mp_ipr.algorithm import BrkgaMpIpr
 from brkga_mp_ipr.types_io import load_configuration
@@ -102,90 +104,101 @@ def main():
 
     nomeInstancias = glob.glob('Instancias/*.txt')
 
-    # instancia = "Instancias/Instancia_6100Vertices_02.txt"
-    for instancia, i in zip(nomeInstancias, range(10)):
-        numVertices, custos, arestas, prazos = leituraInstancia(instancia)
+    instancia = "Instancias/Instancia_6100Vertices_02.txt"
+    idExata = 9
+    #for instancia, idExata in zip(nomeInstancias, range(10)):
+    numVertices, custos, arestas, prazos = leituraInstancia(instancia)
 
-        print(f"\n\nResolução do Caixeiro Viajante com Prazos para a instância: {instancia}")
-        arqv.write(f"\n\nResolução do Caixeiro Viajante com Prazos para a instância: {instancia}\n")
+    print(f"\n\nResolução do Caixeiro Viajante com Prazos para a instância: {instancia}")
+    arqv.write(f"\n\nResolução do Caixeiro Viajante com Prazos para a instância: {instancia}\n")
 
-        decoder = TSPDecoder(numVertices, custos, prazos, arestas)
+    decoder = TSPDecoder(numVertices, custos, prazos, arestas)
 
-        brkga_params, _ = load_configuration("config.conf")
+    brkga_params, _ = load_configuration("config.conf")
 
-        brkga = BrkgaMpIpr(
-            decoder=decoder,
-            sense=Sense.MINIMIZE,
-            seed=seed,  
-            chromosome_size=numVertices,
-            params=brkga_params
-        )
+    brkga = BrkgaMpIpr(
+        decoder=decoder,
+        sense=Sense.MINIMIZE,
+        seed=seed,  
+        chromosome_size=numVertices,
+        params=brkga_params
+    )
 
-        brkga.initialize()
+    initial_cost, initial_tour = greedyDL.heuristica_insercao_mais_barata(numVertices, custos, prazos)
+    keys = sorted([random.random() for _ in range(numVertices)])
 
-        iter_without_improvement = 0
-        best_cost = float('inf')
-        target_cost = 0 
+    initial_chromosome = [0] * numVertices
+    for i in range(numVertices):
+        initial_chromosome[initial_tour[i]] = keys[i]
 
-        start_time = time.time()
-        exec_time = 0
-        maximum_time = 12000  
-        stop_argument = 100 if numVertices <= 20 else 500
-        
-        for iteration in range(num_generations):
-            brkga.evolve(1)
-            current_best_cost = brkga.get_best_fitness()
+    brkga.set_initial_population([initial_chromosome])
 
-            if current_best_cost < best_cost:
-                exec_time = time.time() - start_time
-                best_cost = current_best_cost
-                iter_without_improvement = 0  # Reset contador se houve melhora
-            else:
-                iter_without_improvement += 1
+    brkga.initialize()
 
-            print(current_best_cost)
-            print(f"Iteração {iteration}: {iter_without_improvement} iterações sem melhoria")
+    iter_without_improvement = 0
+    best_cost = initial_cost
+    target_cost = 0 
 
-            # Verificar critérios de parada
-            if time.time() - start_time > maximum_time:
-                print("Critério de tempo atingido. Parando a execução.")
-                break
+    start_time = time.time()
+    exec_time = 0
+    maximum_time = 12000  
+    stop_argument = 500
+    
+    for iteration in range(num_generations):
+        brkga.evolve(2)
+        current_best_cost = brkga.get_best_fitness()
 
-            if stop_rule == StopRule.IMPROVEMENT or iter_without_improvement >= stop_argument:
-                print(f"Critério de {stop_argument} iterações sem melhoria atingido. Parando a execução.")
-                break
-
-            if stop_rule == StopRule.TARGET or best_cost <= target_cost:
-                print(f"Critério de atingir o custo alvo {target_cost} atingido. Parando a execução.")
-                break
-            
-            if resolucaoExata[i].count('.') == 0:
-                if best_cost == int(resolucaoExata[i]):
-                    print(f"Solução encontrada é a solução ótima!")
-                    break
-                elif best_cost - int(resolucaoExata[i]) <=  int(resolucaoExata[i])  * 0.10:
-                    print(f"Solução encontrada está a 5% da solução ótima!")
-                    break
-
-        print(f"Melhor custo encontrado: {best_cost}")
-        print(f"Tempo de execucao ate encontrar melhor custo: {exec_time}\n")
-        arqv.write(f"Melhor custo encontrado: {best_cost}\n")
-        arqv.write(f"Tempo de execucao ate encontrar melhor custo: {exec_time}\n")
-
-        # Mostrar a melhor rota encontrada
-        best_chromosome = brkga.get_best_chromosome()
-        best_permutation = [0] + sorted(range(1, numVertices), key=lambda k: best_chromosome[k-1]) + [0]
-        print(f"Melhor rota: {best_permutation}")
-        arqv.write(f"Melhor rota: {best_permutation}\n")
-
-        # Validação final da rota
-        custo_calculado = calcular_custo_rota(best_permutation, custos)
-        if custo_calculado == best_cost:
-            print(f"A rota {best_permutation} corresponde ao custo {best_cost}.")
-            arqv.write(f"A rota {best_permutation} corresponde ao custo {best_cost}.\n")
+        if current_best_cost < best_cost:
+            exec_time = time.time() - start_time
+            best_cost = current_best_cost
+            iter_without_improvement = 0  # Reset contador se houve melhora
         else:
-            print(f"Inconsistência encontrada! A rota {best_permutation} tem custo {custo_calculado}, mas o melhor custo encontrado foi {best_cost}.")
-            arqv.write(f"Inconsistência encontrada! A rota {best_permutation} tem custo {custo_calculado}, mas o melhor custo encontrado foi {best_cost}.\n")
+            iter_without_improvement += 1
+
+        print(current_best_cost)
+        print(resolucaoExata[idExata])
+        print(f"Iteração {iteration}: {iter_without_improvement} iterações sem melhoria")
+
+        # Verificar critérios de parada
+        if time.time() - start_time > maximum_time:
+            print("Critério de tempo atingido. Parando a execução.")
+            break
+
+        if stop_rule == StopRule.IMPROVEMENT or iter_without_improvement >= stop_argument:
+            print(f"Critério de {stop_argument} iterações sem melhoria atingido. Parando a execução.")
+            break
+
+        if stop_rule == StopRule.TARGET or best_cost <= target_cost:
+            print(f"Critério de atingir o custo alvo {target_cost} atingido. Parando a execução.")
+            break
+        
+        if resolucaoExata[idExata].count('.') == 0:
+            if current_best_cost == int(resolucaoExata[idExata]):
+                print(f"Solução encontrada é a solução ótima!")
+                break
+            elif current_best_cost - int(resolucaoExata[idExata]) <=  int(resolucaoExata[idExata])  * 0.10:
+                print(f"Solução encontrada está a 5% da solução ótima!")
+                break
+
+    print(f"Melhor custo encontrado: {best_cost}")
+    print(f"Tempo de execucao ate encontrar melhor custo: {exec_time}\n")
+    arqv.write(f"Melhor custo encontrado: {best_cost}\n")
+    arqv.write(f"Tempo de execucao ate encontrar melhor custo: {exec_time}\n")
+
+    # Mostrar a melhor rota encontrada
+    best_chromosome = brkga.get_best_chromosome()
+    best_permutation = [0] + sorted(range(1, numVertices), key=lambda k: best_chromosome[k-1]) + [0]
+    print(f"Melhor rota: {best_permutation}")
+    arqv.write(f"Melhor rota: {best_permutation}\n")
+
+    # Validação final da rota
+    custo_calculado = calcular_custo_rota(best_permutation, custos)
+    if custo_calculado == best_cost:
+        print(f"A rota {best_permutation} corresponde ao custo {best_cost}.")
+        arqv.write(f"A rota {best_permutation} corresponde ao custo {best_cost}.\n")
+    else:
+        print(f"Inconsistência encontrada! A rota {best_permutation} tem custo {custo_calculado}, mas o melhor custo encontrado foi {best_cost}.")
+        arqv.write(f"Inconsistência encontrada! A rota {best_permutation} tem custo {custo_calculado}, mas o melhor custo encontrado foi {best_cost}.\n")
 
     arqv.close()
 

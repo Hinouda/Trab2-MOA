@@ -1,0 +1,3 @@
+
+
+Resolução do Caixeiro Viajante com Prazos para a instância: Instancias/Instancia_6100Vertices_02.txt
